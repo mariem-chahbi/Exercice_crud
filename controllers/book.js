@@ -13,7 +13,10 @@ export const fetchBooks = async (req, res) => {
 // Récupérer un livre par son ID
 export const fetchBook = async (req, res) => {
   try {
-    const book = await Book.findById(req.params.id);
+    const book = await Book.findOne({ _id: req.params.id })
+      .populate("author")
+      .populate("categories")
+      .exec();
     if (!book) return res.status(404).json({ message: "Book not found" });
     res.status(200).json({ model: book, message: "success" });
   } catch (error) {
@@ -31,11 +34,27 @@ export const createBook = async (req, res) => {
     res.status(400).json({ message: error.message });
   }
 };
+// Créer un nouveau livre avec vérification de l'auteur
+export const createBookWithAuthorCheck = async (req, res) => {
+  try {
+    const authorId = req.body.author;
+    const existingBooks = await Book.find({ author: authorId });
 
-// Mettre à jour un livre 
+    if (existingBooks.length === 0) {
+      return res.status(400).json({ message: "Author must have written other books before" });
+    }
+
+    const book = new Book(req.body);
+    await book.save();
+    res.status(201).json({ model: book, message: "success" });
+  } catch (error) {
+    res.status(400).json({ message: error.message });
+  }
+};
+
 export const updateBook = async (req, res) => {
   try {
-    const book = await Book.findByIdAndUpdate(req.params.id, req.body, {
+    const book = await Book.findOneAndUpdate({ _id: req.params.id }, req.body, {
       new: true,
     });
     if (!book) return res.status(404).json({ message: "Book not found" });
@@ -48,7 +67,7 @@ export const updateBook = async (req, res) => {
 // Supprimer un livre
 export const deleteBook = async (req, res) => {
   try {
-    const book = await Book.findByIdAndDelete(req.params.id);
+    const book = await Book.deleteOne({ _id: req.params.id });
     if (!book) return res.status(404).json({ message: "Book not found" });
     res.status(200).json({ message: "Book deleted successfully" });
   } catch (error) {

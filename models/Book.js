@@ -6,8 +6,8 @@ const bookSchema = new mongoose.Schema({
     required: true,
   },
   author: {
-    type: String,
-    required: true,
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "Author",
   },
   publishedDate: {
     type: Date,
@@ -25,6 +25,28 @@ const bookSchema = new mongoose.Schema({
     type: String,
     required: true,
   },
+  categories: [
+    {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Category",
+    },
+  ],
 });
 
+
+bookSchema.pre("save", async function (next) {
+  try {
+    const Book = mongoose.model("Book");
+    const authorBooks = await Book.find({ author: this.author });
+
+    if (authorBooks.length === 0) {
+      const error = new Error("Author must have written other books before.");
+      return next(error);
+    }
+
+    next();
+  } catch (error) {
+    next(error);
+  }
+});
 export default mongoose.model("Book", bookSchema);
